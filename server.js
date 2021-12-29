@@ -37,30 +37,27 @@ app.get('/messages', (req, res) => {
 
 });
 
-app.post('/messages', (req, res) => {
+app.post('/messages', async (req, res) => {
     const message = new Message(req.body);
 
-    message.save()
-        .then(() => {
-
-            // messages.push(req.body)
-            console.log('saved');
-            return Message.find({ message: 'badword' })
+    const saveMessage = await message.save()
 
 
-        })
-        .then(censored => {
-            if (censored) {
-                console.log('censord word found', censored);
-                return Message.deleteOne({ _id: censored.id })
-            }
-            io.emit('message', req.body)
-            res.sendStatus(200)
-        })
-        .catch((err) => {
-            res.sendStatus(500);
-            return console.error(err);
-        })
+    // messages.push(req.body)
+    console.log('saved');
+    const censored = await Message.findOne({ message: 'badword' })
+
+
+    if (censored)
+        await Message.deleteOne({ _id: censored.id })
+    else
+        io.emit('message', req.body)
+    res.sendStatus(200)
+
+    // .catch((err) => {
+    //     res.sendStatus(500);
+    //     return console.error(err);
+    // })
 
 
 });
