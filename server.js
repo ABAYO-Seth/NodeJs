@@ -12,6 +12,7 @@ app.use(express.static(__dirname));
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: false }))
 
+mongoose.Promise = Promise
 const dburl = 'mongodb+srv://user:user@cluster0.fz28x.mongodb.net/myFirstDatabase?retryWrites=true&w=majority';
 
 const Message = mongoose.model('Message', {
@@ -30,24 +31,40 @@ const Message = mongoose.model('Message', {
 //     }
 // ]
 app.get('/messages', (req, res) => {
-    Message.find({}, (err, messages)=>{
+    Message.find({}, (err, messages) => {
         res.send(messages)
     })
-   
+
 });
 
 app.post('/messages', (req, res) => {
     const message = new Message(req.body);
 
-    message.save((err) => {
-        if (err)
-            sendStatus(500)
-        // messages.push(req.body)
-        io.emit('message', req.body)
-        res.sendStatus(200)
-    })
+    message.save()
+        .then(() => {
+
+            // messages.push(req.body)
+            console.log('saved');
+            return Message.find({ message: 'badword' })
+
+
+        })
+        .then(censored => {
+            if (censored) {
+                console.log('censord word found', censored);
+                return Message.deleteOne({ _id: censored.id })
+            }
+            io.emit('message', req.body)
+            res.sendStatus(200)
+        })
+        .catch((err) => {
+            res.sendStatus(500);
+            return console.error(err);
+        })
+
 
 });
+
 
 io.on('connection', (Socket) => {
     console.log('a user connected');
